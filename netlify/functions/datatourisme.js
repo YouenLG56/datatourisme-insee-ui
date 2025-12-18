@@ -12,7 +12,7 @@ export default async (req) => {
 
     const base = "https://api.datatourisme.fr";
     const targetUrl = next
-      ? `${base}${next}`
+      ? (next.startsWith("http") ? next : `${base}${next}`)
       : `${base}/v1/${endpoint}?insee=${encodeURIComponent(insee)}&lang=fr&page_size=${encodeURIComponent(pageSize)}&page=1`;
 
     const r = await fetch(targetUrl, {
