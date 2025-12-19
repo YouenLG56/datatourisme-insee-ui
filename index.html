@@ -3,131 +3,160 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>DATAtourisme — Recherche</title>
+  <title>DATAtourisme — UI</title>
+
+  <!-- SheetJS (XLSX) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.3/dist/xlsx.full.min.js"></script>
+
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
-    h1 { margin: 0 0 16px; }
-    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+    h1 { margin: 0 0 10px; }
+    .muted { color:#666; font-size:12px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-top:12px; }
     label { font-size: 12px; color:#444; display:block; margin-bottom:6px; }
-    input, select, textarea, button {
-      padding:10px; border:1px solid #ddd; border-radius:10px; font-size:14px;
-    }
-    textarea { min-height: 90px; width: 420px; }
+    input, select, button { padding:10px; border:1px solid #ddd; border-radius:10px; font-size:14px; }
     button { cursor:pointer; border:none; background:#2B2A60; color:#fff; padding:10px 14px; border-radius:12px; }
     button.secondary { background:#eee; color:#111; border:1px solid #ddd; }
-    .cardgrid { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap:14px; margin-top:18px; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+
+    .panel { border:1px solid #eee; border-radius:16px; padding:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    @media (max-width: 900px){ .grid{ grid-template-columns:1fr; } }
+
+    .ms { border:1px solid #ddd; border-radius:14px; padding:10px; }
+    .ms-head { display:flex; gap:10px; align-items:center; justify-content:space-between; }
+    .ms-head input { flex:1; }
+    .ms-list { margin-top:8px; max-height:220px; overflow:auto; border-top:1px solid #eee; padding-top:8px; }
+    .ms-item { display:flex; align-items:center; gap:8px; padding:6px 2px; }
+    .cards { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap:14px; margin-top:14px; }
     .card { border:1px solid #eee; border-radius:16px; padding:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); }
     .badge { display:inline-block; padding:4px 8px; border-radius:999px; background:#EEECE1; font-size:12px; margin-right:6px; }
-    .muted { color:#666; font-size:12px; }
-    details { margin-top:10px; }
-    .topbar { display:flex; gap:10px; justify-content:space-between; align-items:center; }
-    .actions { display:flex; gap:10px; align-items:center; }
-    .error { color:#b00020; margin-top:12px; white-space:pre-wrap; }
-    .ok { color:#0a7; margin-top:12px; }
+    .error { color:#b00020; white-space:pre-wrap; margin-top:10px; }
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <div>
-      <h1>Recherche DATAtourisme</h1>
-      <div class="muted">Proxy: <code>/.netlify/functions/datatourisme</code></div>
-    </div>
-    <div class="actions">
-      <button id="btnNext" class="secondary" disabled>Page suivante</button>
-    </div>
+  <h1>DATAtourisme — recherche & export</h1>
+  <div class="muted">
+    Proxy: <code>/.netlify/functions/datatourisme</code> • Swagger auto → dropdowns exhaustifs • Export XLSX “tous champs”
   </div>
 
   <div class="row">
     <div>
-      <label>Code INSEE</label>
-      <input id="insee" placeholder="ex: 35238" value="" />
+      <label>Code INSEE (facultatif si department/region)</label>
+      <input id="insee" placeholder="ex: 35238">
     </div>
 
     <div>
       <label>Endpoint</label>
       <select id="endpoint">
-        <option value="placeOfInterest">placeOfInterest (POI)</option>
+        <option value="placeOfInterest">placeOfInterest</option>
         <option value="event">event</option>
         <option value="itinerary">itinerary</option>
         <option value="product">product</option>
-        <option value="all">catalog (tout)</option>
-        <option value="custom">— custom —</option>
       </select>
     </div>
 
     <div>
-      <label>Endpoint custom</label>
-      <input id="endpointCustom" placeholder="ex: placeOfInterest" disabled />
-    </div>
-
-    <div>
-      <label>Type (optionnel)</label>
-      <input id="type" placeholder="ex: Hotel, Museum..." />
+      <label>Lang</label>
+      <select id="lang">
+        <option value="fr">fr</option>
+        <option value="fr,en">fr,en</option>
+        <option value="en">en</option>
+      </select>
     </div>
 
     <div>
       <label>Page size</label>
       <select id="page_size">
         <option>20</option>
-        <option>50</option>
+        <option selected>50</option>
         <option>100</option>
         <option>200</option>
       </select>
     </div>
 
-    <div>
-      <button id="btnSearch">Rechercher</button>
+    <button id="btnSearch">Rechercher</button>
+    <button id="btnNext" class="secondary" disabled>Page suivante</button>
+    <button id="btnExport" class="secondary">Exporter XLSX (tous champs)</button>
+  </div>
+
+  <div class="grid" style="margin-top:14px;">
+    <div class="panel">
+      <div class="muted" style="margin-bottom:10px;"><strong>Filtres “simples”</strong> (menus exhaustifs depuis Swagger)</div>
+
+      <div class="row">
+        <div>
+          <label>Department</label>
+          <input id="department" placeholder="ex: 35" style="width:140px;">
+        </div>
+        <div>
+          <label>Region</label>
+          <input id="region" placeholder="ex: 53" style="width:140px;">
+        </div>
+        <div>
+          <label>Search (plein texte)</label>
+          <input id="search" placeholder="ex: château" style="width:260px;">
+        </div>
+        <div>
+          <label>Sort</label>
+          <input id="sort" placeholder="ex: lastUpdate[desc]" style="width:220px;">
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1; min-width:320px;">
+          <div id="ms-type"></div>
+        </div>
+        <div style="flex:1; min-width:320px;">
+          <div id="ms-review"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1; min-width:320px;">
+          <div id="ms-amenity"></div>
+        </div>
+        <div style="flex:1; min-width:320px;">
+          <div id="ms-theme"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1; min-width:320px;">
+          <div id="ms-client_target"></div>
+        </div>
+        <div style="flex:1; min-width:320px;">
+          <div id="ms-locomotion_mode"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1; min-width:320px;">
+          <div id="ms-difficulty_level"></div>
+        </div>
+        <div style="flex:1; min-width:320px;">
+          <label>Accès PMR</label>
+          <select id="reduced_mobility_access">
+            <option value="">(indifférent)</option>
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="muted" style="margin-top:8px;">
+        NB : certains paramètres peuvent ne pas exister sur tous les endpoints, mais ils sont proposés car présents dans Swagger.
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="muted" style="margin-bottom:10px;"><strong>Résultats</strong></div>
+      <div id="status" class="muted"></div>
+      <div id="err" class="error" style="display:none;"></div>
+      <div id="cards" class="cards"></div>
     </div>
   </div>
 
-  <details>
-    <summary><strong>Filtres avancés (Swagger)</strong></summary>
-    <div class="row" style="margin-top:12px;">
-      <div>
-        <label>Search (plein texte)</label>
-        <input id="search" placeholder="ex: château" style="width:260px;" />
-      </div>
-
-      <div>
-        <label>Filters (expression)</label>
-        <input id="filters" placeholder='ex: type=PlaceOfInterest and isLocatedAt.address.hasAddressCity.insee=35238' style="width:520px;" />
-      </div>
-
-      <div>
-        <label>Fields (champs retournés)</label>
-        <input id="fields" placeholder="ex: uuid,uri,label,type,isLocatedAt.geo,isLocatedAt.address" style="width:520px;" />
-      </div>
-
-      <div>
-        <label>Sort</label>
-        <input id="sort" placeholder="ex: lastUpdate[desc]" style="width:220px;" />
-      </div>
-
-      <div>
-        <label>Department</label>
-        <input id="department" placeholder="ex: 35" style="width:120px;" />
-      </div>
-
-      <div>
-        <label>Region</label>
-        <input id="region" placeholder="ex: 53" style="width:120px;" />
-      </div>
-    </div>
-
-    <div class="row" style="margin-top:12px;">
-      <div>
-        <label>Paramètres libres (1 par ligne) — key=value</label>
-        <textarea id="extras" placeholder="amenity=Wifi&#10;theme=Culture&#10;reduced_mobility_access=true"></textarea>
-        <div class="muted">Ça permet d’ajouter amenity/theme/client_target/etc. sans refaire l’UI à chaque fois.</div>
-      </div>
-    </div>
-  </details>
-
-  <div id="status" class="muted" style="margin-top:14px;"></div>
-  <div id="msg" class="error" style="display:none;"></div>
-
-  <div id="results" class="cardgrid"></div>
-
-  <script src="./datatourisme.js"></script>
+  <script src="./datatourisme-ui.js"></script>
 </body>
 </html>
